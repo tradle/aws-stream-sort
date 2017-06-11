@@ -30,7 +30,7 @@ proto.put = co(function* (item) {
     Item: item
   })
 
-  const updated = yield this.cursor.setIfInOrder(item)
+  const updated = yield this.cursor.tryIncrement(item)
   if (!updated) return
 
   yield this._scanAhead(item)

@@ -9,6 +9,7 @@
     "aws-sdk": "^2.67.0",
     "eslint": "^3.19.0",
     "husky": "^0.13.3",
+    "monotonic-timestamp": "^0.0.9",
     "tape": "^4.6.3"
   },
   "scripts": {

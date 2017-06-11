@@ -61,7 +61,7 @@ proto.set = co(function* (props) {
   })
 })
 
-proto.setIfInOrder = co(function* (props) {
+proto.tryIncrement = co(function* (props) {
   props = this.importProps(props)
   const { queue, seq } = props
 
@@ -134,9 +134,9 @@ proto.scan = co(function* (props) {
   return curSeq
 })
 
-// proto.setIfInOrderAtomic = co(function* (props) {
+// proto.tryIncrementAtomic = co(function* (props) {
 //   const { queue, seq } = this.importProps(props)
-//   // if (seq === 0) return this.setIfInOrder(props)
+//   // if (seq === 0) return this.tryIncrement(props)
 
 //   const { queueProp, seqProp } = this
 //   const ExpressionAttributeValues = {

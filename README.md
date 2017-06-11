@@ -2,7 +2,7 @@
 
 cursor / priority queue using DynamoDB Streams and Lambda (no SQS). To enable the following:
 
-out-of-order stream from DynamoDB -> [lambda using this library] -> in-order event stream from DynamoDB
+out-of-order messages -> [lambda using this library] -> in-order event stream from DynamoDB
 
 ## Usage
 
@@ -55,8 +55,8 @@ For incoming message M, with sequence number S, which falls into queue Q
 
 The DynamoDB stream from the Cursor table will be in-order per queue.
 
-## Gotchas:
-1. `queueProp` MUST be your partition key in the `items` table to ensure compatible sharding of the source DynamoDB stream
+## Setup
+1. `queueProp` + `seq` should be your partition + sort keys in the `items` table
 2. The cursor table should have `queueProp` as its partition key (no sort key)
 
 See [./test/inbox-table-schema.json](./test/inbox-table-schema.json) and [./test/cursor-table-schema.json](./test/cursor-table-schema.json) for an example of a compatible schema.
