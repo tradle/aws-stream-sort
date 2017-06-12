@@ -54,45 +54,56 @@ proto.set = co(function* (props) {
     Key: props,
     Item: props
   })
-
-  this.emit('change', {
-    [queueProp]: queue,
-    [seqProp]: seq
-  })
 })
 
 proto.tryIncrement = co(function* (props) {
+  const { queueProp, seqProp } = this
   props = this.importProps(props)
   const { queue, seq } = props
-
   let last
   try {
     last = yield this.cursor.queryOne({
-      KeyConditionExpression: `${this.queueProp} = :${this.queueProp}`,
+      KeyConditionExpression: `${queueProp} = :${queueProp}`,
       ExpressionAttributeValues: {
-        [`:${this.queueProp}`]: queue
+        [`:${queueProp}`]: queue
       },
       Limit: true,
       ScanIndexForward: false
     })
   } catch (err) {
-    last = { [this.seqProp]: -1 }
+    last = { [seqProp]: -1 }
   }
 
   last = this.importProps(last)
+  const ret = {
+    old: last.seq,
+    new: last.seq
+  }
+
   if (seq <= last.seq) {
     debug(`skipping ${seq} in ${queue}, already did ${last.seq}`)
-    return
+    return ret
   }
 
   if (seq !== last.seq + 1) {
     debug(`out of order: expected ${last.seq + 1}, got ${seq}`)
-    return
+    return ret
   }
 
   yield this.set(this.exportProps({ queue, seq }))
-  return true
+  ret.new = seq
+  this._onchange(queue, ret)
+
+  return ret
 })
+
+proto._onchange = function (queue, change) {
+  const { queueProp, seqProp } = this
+  this.emit('change', {
+    [queueProp]: queue,
+    [seqProp]: change
+  })
+}
 
 /**
  * Scan from a given position to see if we have future items (that arrived out of order)
@@ -105,6 +116,11 @@ proto.scan = co(function* (props) {
   const { batchSize=this.batchSize } = props
   const { queue, seq } = this.importProps(props)
   const { queueProp, seqProp } = this
+  const ret = {
+    old: seq,
+    new: seq
+  }
+
   let results = yield this.items.query({
     KeyConditionExpression: `${queueProp} = :queue AND ${seqProp} between :gte and :lte`,
     ExpressionAttributeValues: {
@@ -127,11 +143,16 @@ proto.scan = co(function* (props) {
     curSeq++
   }
 
-  if (curSeq === seq) return
+  if (curSeq === seq) {
+    return ret
+  }
 
   debug(`jumping cursor ${queue} to ${curSeq}`)
   yield this.set(this.exportProps({ queue, seq: curSeq }))
-  return curSeq
+  ret.new = curSeq
+  this._onchange(queue, ret)
+
+  return ret
 })
 
 // proto.tryIncrementAtomic = co(function* (props) {

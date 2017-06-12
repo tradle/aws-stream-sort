@@ -63,8 +63,8 @@ BATCH_SIZES.forEach(batchSize => {
 
     let i = 0
     autopilot.on('change', function ({ seq }) {
-      output.push(seq)
-      if (seq === input.length - 1) {
+      output.push(seq.new)
+      if (seq.new === input.length - 1) {
         t.same(output, expected)
         t.end()
       }
@@ -102,9 +102,10 @@ BATCH_SIZES.forEach(batchSize => {
     let i = -1
     let prev = -1
     autopilot.on('change', function ({ seq }) {
-      t.ok(seq > prev, `previous: ${prev}, current: ${seq}`)
-      prev = seq
-      if (seq === input.length - 1) {
+      t.equal(seq.old, prev)
+      t.ok(seq.new > prev, `previous: ${prev}, current: ${seq.new}`)
+      prev = seq.new
+      if (seq.new === input.length - 1) {
         t.end()
       }
     })

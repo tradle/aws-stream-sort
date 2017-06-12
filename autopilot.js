@@ -30,35 +30,45 @@ proto.put = co(function* (item) {
     Item: item
   })
 
-  const updated = yield this.cursor.tryIncrement(item)
-  if (!updated) return
+  const result = yield this.cursor.tryIncrement(item)
+  if (result.new === result.old) {
+    return result
+  }
 
-  yield this._scanAhead(item)
+  const more = yield this._scanAhead(item)
+  return {
+    old: result.old,
+    new: more.new
+  }
 })
 
 proto._scanAhead = co(function* (item) {
   let { queue, seq } = this.cursor.importProps(item)
+  const old = seq
   const { batchSize } = this.cursor
   try {
     // update cursor in batches
-    let item, newSeq
     while (true) {
-      item = this.cursor.exportProps({
+      let item = this.cursor.exportProps({
         queue,
         seq
       })
 
-      newSeq = yield this.cursor.scan(item)
-
-      if (newSeq !== seq + batchSize) {
+      let result = yield this.cursor.scan(item)
+      if (!result || result.new !== seq + batchSize) {
         // we're out of stuff ahead of the cursor
         break
       }
 
       // keep going
-      seq = newSeq
+      seq = result.new
     }
   } catch (err) {
     debug('failed to seek farther', err.stack)
+  }
+
+  return {
+    old,
+    new: seq
   }
 })
