@@ -1,6 +1,6 @@
 # aws-stream-sort
 
-cursor / priority queue using DynamoDB Streams and Lambda (no SQS). To enable the following:
+cursor / priority queue using DynamoDB Streams (optionally) and Lambda (no SQS). To enable the following:
 
 out-of-order messages -> [lambda using this library] -> in-order event stream from DynamoDB
 
@@ -12,7 +12,7 @@ const { createAutpilot } = require('aws-cursor')
 const docClient = new AWS.DynamoDB.DocumentClient()
 const autopilot = createAutopilot({
   docClient,
-  cursorTable: 'MyStateTableName',
+  cursorTable: 'MyCursorTableName',
   itemsTable: 'MyItemsTableName',
   queueProp: 'author',
   seqProp: 'seq'
@@ -22,7 +22,12 @@ const autopilot = createAutopilot({
 
 exports.enqueue = co(function* (event, context, callback) {
   try {
-    yield autopilot.put(event)
+    const result = yield autopilot.put(event)
+    if (result.new > result.old) {
+      // you can safely process items with sequence numbers `result.old < seq <= result.new`
+      // or you can stream from the CursorTable to another lambda and process there (below)
+    }
+
     callback()
   } catch (err) {
     console.error(err)
@@ -43,17 +48,17 @@ exports.process = co(function* (event, context, callback) {
 
 Given two tables:
   `items`: table for your events
-  `cursor`: table for storing cursor position
+  `cursor`: table for storing cursor position for queues Q1, Q2, ...
 
-For incoming message M, with sequence number S, which falls into queue Q
+For incoming message M, with sequence number S, which falls into queue Q1
 
 1. Store M in `items`
-2. If S is not the next sequence number in Q, continue to step 3 (else, exit)
-3. increment the cursor value for Q
-4. scan ahead `batchSize` items in `items` to see if we have future messages that arrived out-of-order, and update the cursor for Q again
+2. If S is not the next sequence number in Q1, continue to step 3 (else, exit)
+3. increment the cursor value for Q1
+4. scan ahead `batchSize` items in `items` to see if we have future messages that arrived out-of-order, and update the cursor for Q1 again
 5. repeat step 4 as long as there are more in-order items ahead
 
-The DynamoDB stream from the Cursor table will be in-order per queue.
+The DynamoDB stream from the Cursor table will be in-order per queue, with the old and new cursor positions for that queue in OldImage and NewImage respectively
 
 ## Setup
 1. `queueProp` + `seq` should be your partition + sort keys in the `items` table
