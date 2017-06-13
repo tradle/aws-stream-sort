@@ -47,8 +47,8 @@ exports.process = co(function* (event, context, callback) {
 ## The algorithm
 
 Given two tables:
-  `items`: table for your events
-  `cursor`: table for storing cursor position for queues Q1, Q2, ...
+- `items`: table for your events
+- `cursor`: table for storing cursor position for queues Q1, Q2, ...
 
 For incoming message M, with sequence number S, which falls into queue Q1
 
